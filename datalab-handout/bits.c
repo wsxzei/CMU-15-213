@@ -250,7 +250,7 @@ int isLessOrEqual(int x, int y) {
  *   Examples: logicalNeg(3) = 0, logicalNeg(0) = 1
  *   Legal ops: ~ & ^ | + << >>
  *   Max ops: 12
- *   Rateing: 4 
+ *   Raeting: 4 
  */
 int logicalNeg(int x) {
   int cond1 = (x >> 31) + 1;
