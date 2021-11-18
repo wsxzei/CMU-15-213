@@ -231,7 +231,7 @@ int conditional(int x, int y, int z){
  *   Example: isLessOrEqual(4,5) = 1.
  *   Legal ops: ! ~ & ^ | + << >>
  *   Max ops: 24
- *   Raeting: 3
+ *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
   	int signX = x >> 31 & 1;
