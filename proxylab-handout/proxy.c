@@ -149,8 +149,9 @@ void doit(int connfd){
         Close(proxyfd);
     }
     else{//匹配到了缓存块
-        char *content = get_content(mycache, target);
-        int size = get_size(mycache, target);
+        char *content = get_content(target);//target已经上了读锁，可以安全的读取
+        int size = get_size(target);
+        pthread_rwlock_unlock(&target->rwlock);//接触目标缓存块的读锁
         Rio_writen(connfd, content, size);
     }
 }

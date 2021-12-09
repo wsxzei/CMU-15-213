@@ -28,6 +28,7 @@ block_t *find_block(cache_t *cache , char *url){
         printf("cur=%p\tcur_url=%s\n", cur, cur->url);
 
         if(!strcmp(url, cur->url)){ //url匹配
+            pthread_rwlock_rdlock(&cur->rwlock);
             pthread_rwlock_unlock(&cache->rwlock);
             printf("result url=%s\n", cur->url);
             return cur;
@@ -36,6 +37,12 @@ block_t *find_block(cache_t *cache , char *url){
     pthread_rwlock_unlock(&cache->rwlock);
     return NULL;
 }
+/**对cur->rwlock加读锁的原因,考虑如下情况：
+ * 1.调用find_block前remove了目标块，则会返回null
+ * 2.调用find_block的时候找到了目标块，但可能在返回后，发送缓存内容前被移除出了链表
+ *  对于2这种情况，remove会被阻塞，因为它会尝试获取目标块的写锁
+ * 直到将目标数据传给客户端释放缓存块读锁为止。
+*/
 
 block_t *build_block(char*_url, char*_content, int _size){
     printf("---------build _block--------\n");
@@ -96,21 +103,12 @@ int get_total_size(cache_t *cache){
     return cnt;
 }
 
-char *get_content(cache_t *cache, block_t* block){
-    pthread_rwlock_rdlock(&cache->rwlock);
-    pthread_rwlock_rdlock(&block->rwlock);
+char *get_content(block_t* block){
     char *result = (char *)Malloc(block->size);
     memcpy(result, block->content, block->size);
-    pthread_rwlock_unlock(&block->rwlock);
-    pthread_rwlock_unlock(&cache->rwlock);
     return result;
 }
 
-int get_size(cache_t *cache, block_t *block){
-    pthread_rwlock_rdlock(&cache->rwlock);
-    pthread_rwlock_rdlock(&block->rwlock);
-    int size = block->size;
-    pthread_rwlock_unlock(&block->rwlock);
-    pthread_rwlock_unlock(&cache->rwlock);
-    return size;
+int get_size(block_t *block){
+    return block->size;
 }

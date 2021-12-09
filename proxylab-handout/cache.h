@@ -27,5 +27,5 @@ void insert_block(cache_t *cache, block_t *block);
 void remove_block(cache_t *cache, block_t *block);
 void free_block(block_t *block);
 int get_total_size(cache_t *cache);
-char *get_content(cache_t *cache, block_t* block);
-int get_size(cache_t *cache, block_t *block);
+char *get_content(block_t* block);
+int get_size(block_t *block);
