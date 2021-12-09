@@ -90,7 +90,6 @@ void doit(int connfd){
     // printf("hostname = %s\npath = %s\nport = %d\n", hostname, path, port);
     // printf("mycache=%p\n", &mycache);
     block_t *target = find_block(mycache, copy);
-    int size = mycache->total_size;
 
     if(target == NULL){//没有找到缓存块，需要向服务器请求资源
         /*构建发送给end_server的请求头,存储在header_to_server中*/
@@ -151,12 +150,11 @@ void doit(int connfd){
         Close(proxyfd);
     }
     else{//匹配到了缓存块
-        char *content = get_content(target);//target已经上了读锁，可以安全的读取
+        char *content = get_content(target);
         int size = get_size(target);
         not_blocked_remove(mycache, target);
         not_blocked_insert(mycache, target);
-        pthread_rwlock_unlock(&target->rwlock);//解除目标缓存块的读锁
-        pthread_rwlock_unlock(&mycache->rwlock);//解除对链表的读锁
+        pthread_rwlock_unlock(&mycache->rwlock);//解除对链表的写锁
         Rio_writen(connfd, content, size);
     }
 }

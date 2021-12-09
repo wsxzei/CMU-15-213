@@ -17,7 +17,7 @@ cache_t* cache_init(void){
 
 /*找到指定指定url的缓存块节点,找到则返回block_t的指针,否则返回NULL*/
 block_t *find_block(cache_t *cache , char *url){
-    pthread_rwlock_rdlock(&cache->rwlock);
+    pthread_rwlock_wrlock(&cache->rwlock);
     printf("--------find_block---------\ncache=%p\turl=%s\n", cache, url);
     block_t *cur = cache->head->next;
     block_t *tail = cache->tail;
@@ -28,7 +28,7 @@ block_t *find_block(cache_t *cache , char *url){
         printf("cur=%p\tcur_url=%s\n", cur, cur->url);
 
         if(!strcmp(url, cur->url)){ //url匹配
-            pthread_rwlock_rdlock(&cur->rwlock);
+            // pthread_rwlock_wrlock(&cur->rwlock);
             printf("result url=%s\n", cur->url);
             return cur;
         }
@@ -84,22 +84,22 @@ void not_blocked_insert(cache_t *cache, block_t *block){
 }
 
 /*将指定缓存块移除,并返回其指针*/
-void remove_block(cache_t *cache, block_t *block){
-    pthread_rwlock_wrlock(&cache->rwlock);
-    pthread_rwlock_wrlock(&block->rwlock);
-    if(!not_blocked_find(cache, block)){ 
-        pthread_rwlock_unlock(&block->rwlock);
-        pthread_rwlock_unlock(&cache->rwlock);
-        return;
-    }
-    block->next->prev = block->prev;
-    block->prev->next = block->next;
-    block->prev = block->next = NULL;
-    (cache->total_size) -= (block->size);
-    free_block(block);
-    pthread_rwlock_unlock(&block->rwlock);
-    pthread_rwlock_unlock(&cache->rwlock);
-}
+// void remove_block(cache_t *cache, block_t *block){
+//     pthread_rwlock_wrlock(&cache->rwlock);
+//     pthread_rwlock_wrlock(&block->rwlock);
+//     if(!not_blocked_find(cache, block)){ 
+//         pthread_rwlock_unlock(&block->rwlock);
+//         pthread_rwlock_unlock(&cache->rwlock);
+//         return;
+//     }
+//     block->next->prev = block->prev;
+//     block->prev->next = block->next;
+//     block->prev = block->next = NULL;
+//     (cache->total_size) -= (block->size);
+//     free_block(block);
+//     pthread_rwlock_unlock(&block->rwlock);
+//     pthread_rwlock_unlock(&cache->rwlock);
+// }
 void not_blocked_remove(cache_t *cache, block_t *block){
 
     block->next->prev = block->prev;
@@ -130,13 +130,3 @@ int get_size(block_t *block){
     return block->size;
 }
 
-//非线程安全地查找链表中是否有block节点,如果有则返回1，没有则返回0
-int not_blocked_find(cache_t *cache , block_t *block){
-    block_t *cur = cache->tail->prev;
-    block_t *head = cache->head;
-    for(; cur != head; cur = cur->prev){
-        if(cur == block)
-            return 1;
-    }
-    return 0;
-}
