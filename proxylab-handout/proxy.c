@@ -105,9 +105,6 @@ void doit(int connfd){
             return;
         }
 
-        /*将新构建的请求头发送给end_server*/
-        Rio_writen(proxyfd, header_to_server, strlen(header_to_server));
-
         /*接收end_server传递的数据，并将其转发给客户端,同时储存在缓存中*/
         ssize_t n, cache_size = 0;
         char *cache_store = (char *)Malloc(MAX_OBJECT_SIZE);
