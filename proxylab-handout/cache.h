@@ -29,3 +29,6 @@ void free_block(block_t *block);
 int get_total_size(cache_t *cache);
 char *get_content(block_t* block);
 int get_size(block_t *block);
+void not_blocked_remove(cache_t *cache, block_t *block);
+void not_blocked_insert(cache_t *cache, block_t *block);
+int not_blocked_find(cache_t *cache , block_t *block);

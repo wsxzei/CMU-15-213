@@ -29,7 +29,6 @@ block_t *find_block(cache_t *cache , char *url){
 
         if(!strcmp(url, cur->url)){ //url匹配
             pthread_rwlock_rdlock(&cur->rwlock);
-            pthread_rwlock_unlock(&cache->rwlock);
             printf("result url=%s\n", cur->url);
             return cur;
         }
@@ -75,21 +74,41 @@ void insert_block(cache_t *cache, block_t *block){
     pthread_rwlock_unlock(&cache->rwlock);
     printf("--------end_insert--------\n");
 }
+void not_blocked_insert(cache_t *cache, block_t *block){
+    block_t *head = cache->head;
+    head->next->prev = block;
+    block->next = head->next;
+    block->prev = head;
+    head->next = block;
+    cache->total_size += block->size;
+}
 
 /*将指定缓存块移除,并返回其指针*/
 void remove_block(cache_t *cache, block_t *block){
     pthread_rwlock_wrlock(&cache->rwlock);
     pthread_rwlock_wrlock(&block->rwlock);
+    if(!not_blocked_find(cache, block)){ 
+        pthread_rwlock_unlock(&block->rwlock);
+        pthread_rwlock_unlock(&cache->rwlock);
+        return;
+    }
     block->next->prev = block->prev;
     block->prev->next = block->next;
     block->prev = block->next = NULL;
     (cache->total_size) -= (block->size);
+    free_block(block);
     pthread_rwlock_unlock(&block->rwlock);
     pthread_rwlock_unlock(&cache->rwlock);
 }
+void not_blocked_remove(cache_t *cache, block_t *block){
+
+    block->next->prev = block->prev;
+    block->prev->next = block->next;
+    block->prev = block->next = NULL;
+    (cache->total_size) -= (block->size);
+}
 
 void free_block(block_t *block){
-    pthread_rwlock_wrlock(&block->rwlock);
     //释放block_t节点，还需释放content
     free((void *)(block->url));
     free((void *)(block->content));
@@ -97,9 +116,7 @@ void free_block(block_t *block){
 }
 
 int get_total_size(cache_t *cache){
-    pthread_rwlock_rdlock(&cache->rwlock);
     int cnt = cache->total_size;
-    pthread_rwlock_unlock(&cache->rwlock);
     return cnt;
 }
 
@@ -111,4 +128,15 @@ char *get_content(block_t* block){
 
 int get_size(block_t *block){
     return block->size;
+}
+
+//非线程安全地查找链表中是否有block节点,如果有则返回1，没有则返回0
+int not_blocked_find(cache_t *cache , block_t *block){
+    block_t *cur = cache->tail->prev;
+    block_t *head = cache->head;
+    for(; cur != head; cur = cur->prev){
+        if(cur == block)
+            return 1;
+    }
+    return 0;
 }

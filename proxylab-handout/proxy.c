@@ -128,22 +128,24 @@ void doit(int connfd){
                 ,n,cache_size,temp_ptr);
 
         if(cache_size <= MAX_OBJECT_SIZE){
-            int accu_size = get_total_size(mycache);
             block_t *block = build_block(copy, cache_store, cache_size);
+            pthread_rwlock_wrlock(&mycache->rwlock);//因为要对链表遍历，所以要加上写锁
+            int accu_size = get_total_size(mycache);
             block_t *evict_block = mycache->tail->prev;
             free(copy);
+
             while(cache_size + accu_size > MAX_CACHE_SIZE){//驱逐超出空间的缓存块
                 block_t *temp_block = evict_block->prev;
                 printf("evict_block=%p\ttemp_block=%p\taccu_size = %d\n"
                     , evict_block, temp_block, accu_size);
 
-                remove_block(mycache, evict_block);//驱逐尾节点左侧的缓存块
-                free_block(evict_block);//释放被驱逐缓存块资源
+                not_blocked_remove(mycache, evict_block);//驱逐尾节点左侧的缓存块,并释放资源
+                free_block(evict_block);
                 accu_size = get_total_size(mycache);
                 evict_block = temp_block;
             }
-            printf("block=%p\n", block);
-            insert_block(mycache, block);//插入双向链表的头结点右侧
+            not_blocked_insert(mycache, block);//插入双向链表的头结点右侧
+            pthread_rwlock_unlock(&mycache->rwlock);
         }
 
         Close(proxyfd);
@@ -151,7 +153,10 @@ void doit(int connfd){
     else{//匹配到了缓存块
         char *content = get_content(target);//target已经上了读锁，可以安全的读取
         int size = get_size(target);
-        pthread_rwlock_unlock(&target->rwlock);//接触目标缓存块的读锁
+        not_blocked_remove(mycache, target);
+        not_blocked_insert(mycache, target);
+        pthread_rwlock_unlock(&target->rwlock);//解除目标缓存块的读锁
+        pthread_rwlock_unlock(&mycache->rwlock);//解除对链表的读锁
         Rio_writen(connfd, content, size);
     }
 }
